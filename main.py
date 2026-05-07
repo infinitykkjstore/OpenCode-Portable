@@ -41,7 +41,7 @@ def install_opencode():
 
 
 def start_web_server():
-    os.execvp("opencode", ["opencode", "web", "--hostname", "0.0.0.0", "--port", "4096"])
+    os.execvp("bash", ["bash", "-lc", "opencode web --hostname 0.0.0.0 --port 4096"])
 
 
 if __name__ == "__main__":

@@ -1,6 +1,3 @@
-```python
-#!/usr/bin/env python3
-
 import os
 import shutil
 import subprocess
@@ -124,4 +121,3 @@ if __name__ == "__main__":
         install_opencode()
 
     start_web_server()
-```

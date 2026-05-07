@@ -36,6 +36,45 @@ def is_opencode_installed():
     return get_opencode_path() is not None
 
 
+def install_github_cli():
+    print("Instalando GitHub CLI...")
+    token = os.environ.get("PERSONAL_TOKEN_GH")
+    if not token:
+        print("AVISO: PERSONAL_TOKEN_GH não encontrado. gh será instalado mas não logado.")
+        token = ""
+
+    deb_path = "/tmp/gh_latest.deb"
+
+    subprocess.run(
+        ["curl", "-fsSL", "-o", deb_path,
+         "https://github.com/cli/cli/releases/download/v2.92.0/gh_2.92.0_linux_amd64.deb"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    subprocess.run(
+        ["dpkg", "-i", deb_path],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    subprocess.run(
+        ["apt", "install", "-f", "-y"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    if token:
+        subprocess.run(
+            ["bash", "-c", f"echo {token} | gh auth login --with-token"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        print("GitHub CLI instalado e logado.")
+
+    os.remove(deb_path)
+
+
 def install_opencode():
     print("Preparando ambiente...")
 
@@ -50,6 +89,8 @@ def install_opencode():
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
+
+    install_github_cli()
 
     print("Opencode não encontrado. Instalando...")
 
@@ -117,6 +158,7 @@ if __name__ == "__main__":
 
     if is_opencode_installed():
         print("Opencode já está instalado.")
+        install_github_cli()
     else:
         install_opencode()
 

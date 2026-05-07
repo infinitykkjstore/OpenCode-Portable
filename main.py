@@ -70,7 +70,12 @@ def install_github_cli():
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        print("GitHub CLI instalado e logado.")
+        subprocess.run(
+            ["bash", "-c", f"gh auth setup-git"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )        
+        print("GitHub CLI instalado e logado no git/gh.")
 
     os.remove(deb_path)
 

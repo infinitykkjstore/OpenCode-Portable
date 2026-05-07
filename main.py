@@ -85,7 +85,7 @@ def install_opencode():
     )
 
     subprocess.run(
-        ["apt", "install", "-y", "curl"],
+        ["apt", "install", "-y", "curl", "wget", "nano"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )

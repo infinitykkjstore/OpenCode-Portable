@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import shutil
 import subprocess
 import sys
@@ -36,8 +37,14 @@ def install_opencode():
         sys.exit(1)
 
 
+def start_web_server():
+    os.execvp("opencode", ["opencode", "web", "--hostname", "0.0.0.0", "--port", "4096"])
+
+
 if __name__ == "__main__":
     if is_opencode_installed():
         print("Opencode já está instalado.")
+        start_web_server()
     else:
         install_opencode()
+        start_web_server()

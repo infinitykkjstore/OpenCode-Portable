@@ -11,6 +11,9 @@ def is_opencode_installed():
 
 
 def install_opencode():
+    print("Preparando ambiente...")
+    subprocess.run(["apt", "update"], capture_output=True)
+    subprocess.run(["apt", "install", "-y", "curl"], capture_output=True)
     print("Opencode não encontrado. Instalando...")
     try:
         result = subprocess.run(

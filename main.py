@@ -2,6 +2,8 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.request
+import urllib.error
 
 
 def ensure_opencode_in_path():
@@ -74,7 +76,7 @@ def install_github_cli():
             ["bash", "-c", f"gh auth setup-git"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
-        )        
+        )
         print("GitHub CLI instalado e logado no git/gh.")
 
     os.remove(deb_path)
@@ -137,6 +139,62 @@ def install_opencode():
         sys.exit(1)
 
 
+def download_and_store_opencode_config():
+    """
+    Verifica a variável de ambiente CONFIG_OPENCODE_URL.
+    Se definida e válida, baixa o arquivo e salva como ~/.config/opencode/opencode.json.
+    Retorna uma mensagem de feedback sobre o resultado da operação.
+    """
+    config_url = os.environ.get("CONFIG_OPENCODE_URL", "").strip()
+
+    # Verifica se a variável está definida e não é vazia
+    if not config_url:
+        print("[Init] CONFIG_OPENCODE_URL não definida ou vazia. Ignorando download da configuração.")
+        return
+
+    # Verifica se a URL começa com http:// ou https://
+    if not (config_url.startswith("http://") or config_url.startswith("https://")):
+        print(f"[Init] CONFIG_OPENCODE_URL definida ('{config_url}'), mas não é uma URL válida (deve começar com http:// ou https://). Ignorando download.")
+        return
+
+    print(f"[Init] CONFIG_OPENCODE_URL detectada: {config_url}")
+    print("[Init] Baixando arquivo de configuração...")
+
+    # Define o caminho temporário e o caminho de destino final
+    temp_file_path = "/tmp/opencode_config_temp.json"
+    config_dir = os.path.expanduser("~/.config/opencode")
+    final_file_path = os.path.join(config_dir, "opencode.json")
+
+    try:
+        # Faz o download do arquivo
+        req = urllib.request.Request(config_url, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; OpenCode/1.0)'
+        })
+        with urllib.request.urlopen(req, timeout=30) as response:
+            if response.status != 200:
+                print(f"[Init] ERRO: Servidor retornou status {response.status}. Não foi possível baixar a configuração.")
+                return
+            config_data = response.read()
+
+        # Salva temporariamente
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(config_data)
+
+        # Cria o diretório de destino se não existir
+        os.makedirs(config_dir, exist_ok=True)
+
+        # Move o arquivo para o destino final
+        shutil.move(temp_file_path, final_file_path)
+
+        print(f"[Init] SUCCESS: Configuração salva com sucesso em {final_file_path}")
+        print(f"[Init] Tamanho do arquivo: {len(config_data)} bytes")
+
+    except urllib.error.URLError as e:
+        print(f"[Init] ERRO: Falha ao acessar a URL: {e.reason}")
+    except Exception as e:
+        print(f"[Init] ERRO inesperado durante o download/salvamento da configuração: {e}")
+
+
 def start_web_server():
     opencode = get_opencode_path()
 
@@ -166,5 +224,8 @@ if __name__ == "__main__":
         install_github_cli()
     else:
         install_opencode()
+
+    # Verifica e baixa a configuração remota antes de iniciar o servidor
+    download_and_store_opencode_config()
 
     start_web_server()

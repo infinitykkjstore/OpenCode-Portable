@@ -42,7 +42,7 @@ def install_github_cli():
     print("Instalando GitHub CLI...")
     token = os.environ.get("PERSONAL_TOKEN_GH")
     if not token:
-        print("AVISO: PERSONAL_TOKEN_GH não encontrado. gh será instalado mas não logado.")
+        print("AVISO: PERSONAL_TOKEN_GH nao encontrado. gh sera instalado mas nao logado.")
         token = ""
 
     deb_path = "/tmp/gh_latest.deb"
@@ -76,7 +76,7 @@ def install_github_cli():
             ["bash", "-c", f"gh auth setup-git"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
-        )
+        )        
         print("GitHub CLI instalado e logado no git/gh.")
 
     os.remove(deb_path)
@@ -99,7 +99,7 @@ def install_opencode():
 
     install_github_cli()
 
-    print("Opencode não encontrado. Instalando...")
+    print("Opencode nao encontrado. Instalando...")
 
     try:
         result = subprocess.run(
@@ -119,87 +119,112 @@ def install_opencode():
         )
 
         if process.returncode != 0:
-            print("Erro durante a instalação.")
+            print("Erro durante a instalacao.")
             sys.exit(1)
 
-        # recarrega PATH após instalação
+        # recarrega PATH apos instalacao
         ensure_opencode_in_path()
 
         opencode = get_opencode_path()
 
         if not opencode:
-            print("Instalação concluída, mas opencode não foi encontrado.")
+            print("Instalacao concluida, mas opencode nao foi encontrado.")
             print("PATH atual:", os.environ.get("PATH"))
             sys.exit(1)
 
-        print(f"Instalação concluída! ({opencode})")
+        print(f"Instalacao concluida! ({opencode})")
 
     except Exception as e:
         print(f"Erro: {e}")
         sys.exit(1)
 
 
-def download_and_store_opencode_config():
+def download_file_from_url(url, temp_file_path, final_file_path):
     """
-    Verifica a variável de ambiente CONFIG_OPENCODE_URL.
-    Se definida e válida, baixa o arquivo e salva como ~/.config/opencode/opencode.json.
-    Retorna uma mensagem de feedback sobre o resultado da operação.
+    Faz o download de um arquivo de uma URL e salva no caminho especificado.
+    Retorna True se bem-sucedido, False caso contrario.
     """
-    config_url = os.environ.get("CONFIG_OPENCODE_URL", "").strip()
-
-    # Verifica se a variável está definida e não é vazia
-    if not config_url:
-        print("[Init] CONFIG_OPENCODE_URL não definida ou vazia. Ignorando download da configuração.")
-        return
-
-    # Verifica se a URL começa com http:// ou https://
-    if not (config_url.startswith("http://") or config_url.startswith("https://")):
-        print(f"[Init] CONFIG_OPENCODE_URL definida ('{config_url}'), mas não é uma URL válida (deve começar com http:// ou https://). Ignorando download.")
-        return
-
-    print(f"[Init] CONFIG_OPENCODE_URL detectada: {config_url}")
-    print("[Init] Baixando arquivo de configuração...")
-
-    # Define o caminho temporário e o caminho de destino final
-    temp_file_path = "/tmp/opencode_config_temp.json"
-    config_dir = os.path.expanduser("~/.config/opencode")
-    final_file_path = os.path.join(config_dir, "opencode.json")
-
     try:
-        # Faz o download do arquivo
-        req = urllib.request.Request(config_url, headers={
+        req = urllib.request.Request(url, headers={
             'User-Agent': 'Mozilla/5.0 (compatible; OpenCode/1.0)'
         })
         with urllib.request.urlopen(req, timeout=30) as response:
             if response.status != 200:
-                print(f"[Init] ERRO: Servidor retornou status {response.status}. Não foi possível baixar a configuração.")
-                return
-            config_data = response.read()
+                print(f"[Init] ERRO: Servidor retornou status {response.status}. Nao foi possivel baixar o arquivo.")
+                return False
+            file_data = response.read()
 
         # Salva temporariamente
         with open(temp_file_path, "wb") as temp_file:
-            temp_file.write(config_data)
+            temp_file.write(file_data)
 
-        # Cria o diretório de destino se não existir
-        os.makedirs(config_dir, exist_ok=True)
+        # Cria o diretorio de destino se nao existir
+        final_dir = os.path.dirname(final_file_path)
+        os.makedirs(final_dir, exist_ok=True)
 
         # Move o arquivo para o destino final
         shutil.move(temp_file_path, final_file_path)
 
-        print(f"[Init] SUCCESS: Configuração salva com sucesso em {final_file_path}")
-        print(f"[Init] Tamanho do arquivo: {len(config_data)} bytes")
+        print(f"[Init] SUCCESS: Arquivo salvo com sucesso em {final_file_path}")
+        print(f"[Init] Tamanho do arquivo: {len(file_data)} bytes")
+        return True
 
     except urllib.error.URLError as e:
         print(f"[Init] ERRO: Falha ao acessar a URL: {e.reason}")
+        return False
     except Exception as e:
-        print(f"[Init] ERRO inesperado durante o download/salvamento da configuração: {e}")
+        print(f"[Init] ERRO inesperado durante o download/salvamento do arquivo: {e}")
+        return False
+
+
+def process_remote_file(env_var_name, final_file_path):
+    """
+    Verifica uma variavel de ambiente, faz o download de um arquivo se valido,
+    e salva no caminho final especificado.
+    """
+    file_url = os.environ.get(env_var_name, "").strip()
+
+    # Verifica se a variavel esta definida e nao e vazia
+    if not file_url:
+        print(f"[Init] {env_var_name} nao definida ou vazia. Ignorando download do arquivo.")
+        return
+
+    # Verifica se a URL comeca com http:// ou https://
+    if not (file_url.startswith("http://") or file_url.startswith("https://")):
+        print(f"[Init] {env_var_name} definida ('{file_url}'), mas nao e uma URL valida (deve comecar com http:// ou https://). Ignorando download.")
+        return
+
+    print(f"[Init] {env_var_name} detectada: {file_url}")
+    print("[Init] Baixando arquivo...")
+
+    # Define um caminho temporario baseado no nome do arquivo final
+    temp_file_path = f"/tmp/{os.path.basename(final_file_path)}_temp"
+    
+    # Faz o download e salva o arquivo
+    download_file_from_url(file_url, temp_file_path, final_file_path)
+
+
+def download_and_store_opencode_config():
+    """
+    Verifica a variavel de ambiente CONFIG_OPENCODE_URL.
+    Se definida e valida, baixa o arquivo e salva como ~/.config/opencode/opencode.json.
+    """
+    process_remote_file("CONFIG_OPENCODE_URL", os.path.expanduser("~/.config/opencode/opencode.json"))
+
+
+def download_and_store_auth():
+    """
+    Verifica a variavel de ambiente AUTH_FILE_URL.
+    Se definida e valida, baixa o arquivo e salva como ~/.local/share/opencode/auth.json.
+    """
+    process_remote_file("AUTH_FILE_URL", os.path.expanduser("~/.local/share/opencode/auth.json"))
 
 
 def start_web_server():
     opencode = get_opencode_path()
 
     if not opencode:
-        print("opencode não encontrado no PATH.")
+        print("opencode nao encontrado no PATH.")
         print("PATH atual:", os.environ.get("PATH"))
         sys.exit(1)
 
@@ -220,12 +245,15 @@ if __name__ == "__main__":
     ensure_opencode_in_path()
 
     if is_opencode_installed():
-        print("Opencode já está instalado.")
+        print("Opencode ja esta instalado.")
         install_github_cli()
     else:
         install_opencode()
 
-    # Verifica e baixa a configuração remota antes de iniciar o servidor
+    # Verifica e baixa a configuracao remota antes de iniciar o servidor
     download_and_store_opencode_config()
+    
+    # Verifica e baixa o arquivo de autenticacao remota antes de iniciar o servidor
+    download_and_store_auth()
 
     start_web_server()
